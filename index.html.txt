@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KlasseKlets - Groep 7 Meester Spigtschool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            scroll-behavior: smooth; 
+            background-color: #f8fafc;
+        }
+
+        #app-container {
+            border: 1px solid #000000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            max-width: 100%;
+            background-color: #f8fafc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        .modal-z { z-index: 9999; }
+        [data-lucide] { width: 20px; height: 20px; display: inline-block; }
+        
+        .message-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .message-card:hover { transform: translateY(-4px) scale(1.01); }
+        
+        @keyframes float { 
+            0% { transform: translateY(0px); } 
+            50% { transform: translateY(-5px); } 
+            100% { transform: translateY(0px); } 
+        }
+        .float-animation { animation: float 3s ease-in-out infinite; }
+
+        /* Standaard Envelop */
+        .envelope {
+            position: relative;
+            width: 130px;
+            height: 90px;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .envelope:hover {
+            transform: translateY(-8px) rotate(3deg);
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .envelope::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-left: 65px solid transparent;
+            border-right: 65px solid transparent;
+            border-top: 45px solid #e2e8f0;
+            z-index: 2;
+        }
+
+        /* Speciale Enveloppen & Kaarten */
+        .envelope-milou { border-color: #d8b4fe; background: #faf5ff; }
+        .envelope-milou::before { border-top-color: #f3e8ff; }
+
+        .envelope-gold { 
+            border-color: #fbbf24; 
+            background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%); 
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+        }
+        .envelope-gold::before { border-top-color: #fde68a; }
+
+        .joke-card {
+            position: relative;
+            width: 130px;
+            height: 90px;
+            background: #fef9c3;
+            border: 2px dashed #facc15;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .joke-card:hover { 
+            transform: translateY(-5px) rotate(-2deg); 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+        }
+
+        /* Grote Pop-up Animatie */
+        @keyframes popupIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-popup { animation: popupIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        .clou-reveal { animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- Grote Waarschuwing Pop-up voor foute woorden -->
+        <div id="big-warning-overlay" class="hidden fixed inset-0 z-[10000] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm">
+            <div class="bg-white rounded-[40px] shadow-2xl p-8 max-w-sm w-full text-center animate-popup border-4 border-red-500">
+                <div class="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="shield-alert" class="text-red-600 w-12 h-12"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Oeps!</h2>
+                <p class="text-slate-600 font-bold leading-relaxed">
+                    We gebruiken hier alleen <span class="text-purple-600">gezellige woorden</span> op de Meester Spigtschool.
+                </p>
+                <div class="mt-6 h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div id="warning-progress" class="h-full bg-red-500 w-full transition-all duration-[3000ms] ease-linear"></div>
+                </div>
+            </div>
+        </div>
+
+        <header class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg sticky top-0 z-50">
+            <div class="max-w-2xl mx-auto p-6 pb-4">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h1 class="text-3xl font-extrabold flex items-center gap-2 tracking-tight">
+                                <i data-lucide="sparkles" class="text-yellow-300 float-animation"></i> KlasseKlets
+                            </h1>
+                            <button onclick="handleLockClick()" class="text-white/30 hover:text-white transition-colors focus:outline-none" id="lock-btn">
+                                <i data-lucide="lock" id="lock-icon" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                        <p class="text-indigo-100 text-[10px] font-bold tracking-widest uppercase">Groep 7 Meester Spigtschool</p>
+                    </div>
+                </div>
+                
+                <nav class="flex gap-2 bg-black/10 p-1 rounded-2xl">
+                    <button onclick="switchView('chat')" id="nav-chat" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm transition-all bg-white text-purple-600 shadow-sm">
+                        <i data-lucide="message-circle" class="w-4 h-4 mr-1"></i> Korte berichtjes
+                    </button>
+                    <button onclick="switchView('reports')" id="nav-reports" class="flex-1 py-2.5 px-4 rounded-xl font-bold text-sm transition-all hover:bg-white/10 text-white">
+                        <i data-lucide="mail" class="w-4 h-4 mr-1"></i> Inbox
+                    </button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- KORTE BERICHTJES VIEW -->
+        <main id="chat-view" class="max-w-2xl mx-auto p-4 py-8 flex-grow">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-black text-slate-700">Kletspraatjes</h2>
+                <button onclick="toggleCompose(true, 'chat')" class="bg-purple-600 text-white font-bold py-2.5 px-5 rounded-full shadow-md flex items-center gap-2 transform active:scale-95 transition-all">
+                    <i data-lucide="plus" class="w-5 h-5"></i> Schrijf iets
+                </button>
+            </div>
+            
+            <div id="loading-state" class="flex flex-col items-center justify-center py-20 text-slate-400">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500 mb-4"></div>
+                <p>Berichtjes ophalen...</p>
+            </div>
+            <div id="empty-state" class="hidden text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-100">
+                <i data-lucide="message-square-dashed" class="w-16 h-16 text-slate-200 mx-auto mb-4"></i>
+                <h2 class="text-xl font-bold text-slate-600">Nog geen berichtjes!</h2>
+                <p class="text-slate-400">Wie plaatst het eerste korte berichtje?</p>
+            </div>
+            <div id="messages-container" class="space-y-6"></div>
+        </main>
+
+        <!-- INBOX VIEW -->
+        <main id="reports-view" class="hidden max-w-2xl mx-auto p-4 py-8 flex-grow">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-xl font-black text-slate-700">Inbox</h2>
+                <button onclick="openSelectionModal()" class="bg-indigo-600 text-white font-bold py-2.5 px-5 rounded-full shadow-md flex items-center gap-2 transform active:scale-95 transition-all">
+                    <i data-lucide="mail-plus" class="w-5 h-5"></i> Nieuw bericht
+                </button>
+            </div>
+
+            <div id="reports-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-y-10 gap-x-8 justify-items-center"></div>
+            
+            <div id="reports-empty-state" class="hidden text-center py-20 bg-white rounded-3xl shadow-sm border border-slate-100">
+                <i data-lucide="mailbox" class="w-16 h-16 text-slate-200 mx-auto mb-4"></i>
+                <h2 class="text-xl font-bold text-slate-600">Nog geen berichten!</h2>
+                <p class="text-slate-400">Geen enveloppen gevonden vandaag.</p>
+            </div>
+        </main>
+
+        <!-- KEUZE MODAL -->
+        <div id="selection-modal" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-md modal-z flex items-center justify-center p-4">
+            <div class="bg-white rounded-[40px] shadow-2xl w-full max-w-sm p-8 animate-popup text-center">
+                <h3 class="text-2xl font-black text-slate-800 mb-6">Wat wil je maken?</h3>
+                <div class="space-y-3">
+                    <button onclick="toggleCompose(true, 'report')" class="w-full py-4 rounded-2xl bg-indigo-50 text-indigo-700 font-bold hover:bg-indigo-100 flex items-center justify-center gap-3 transition-all border-2 border-indigo-100">
+                        <i data-lucide="book-open"></i> Dagverslag
+                    </button>
+                    <button onclick="toggleCompose(true, 'mop')" class="w-full py-4 rounded-2xl bg-yellow-50 text-yellow-700 font-bold hover:bg-yellow-100 flex items-center justify-center gap-3 transition-all border-2 border-yellow-100">
+                        <i data-lucide="laugh"></i> Mop vertellen
+                    </button>
+                    <button onclick="toggleCompose(true, 'milou-vraag')" class="w-full py-4 rounded-2xl bg-purple-50 text-purple-700 font-bold hover:bg-purple-100 flex items-center justify-center gap-3 transition-all border-2 border-purple-100">
+                        <i data-lucide="help-circle"></i> Vraag voor Milou
+                    </button>
+                    <button onclick="openMilouAccess()" class="w-full py-4 rounded-2xl bg-amber-50 text-amber-700 font-black hover:bg-amber-100 flex items-center justify-center gap-3 transition-all border-2 border-amber-200">
+                        <i data-lucide="crown"></i> Alleen voor Milou
+                    </button>
+                </div>
+                <button onclick="closeSelectionModal()" class="mt-6 text-slate-400 font-bold text-[10px] uppercase tracking-widest">Annuleren</button>
+            </div>
+        </div>
+
+        <!-- MILOU PIN MODAL -->
+        <div id="milou-modal" class="hidden fixed inset-0 bg-slate-900/60 modal-z flex items-center justify-center p-4">
+            <form onsubmit="handleMilouLogin(event)" class="bg-white rounded-[35px] shadow-2xl p-8 text-center max-w-xs w-full border-4 border-amber-400 animate-popup">
+                <h2 class="font-black text-lg mb-4 uppercase text-amber-600">Alleen voor Milou</h2>
+                <input id="milou-pin" type="password" placeholder="****" maxlength="4" class="w-full p-4 border-2 rounded-xl text-center text-3xl font-bold outline-none tracking-[1em]">
+                <p id="milou-pin-error" class="hidden text-red-500 text-xs font-bold mt-2">Onjuiste pincode!</p>
+                <button type="submit" class="w-full mt-6 bg-amber-500 text-white p-4 rounded-xl font-black shadow-lg">Ik ben Milou!</button>
+                <button type="button" onclick="closeMilouAccess()" class="mt-4 text-slate-400 font-bold text-[10px] uppercase">Sluiten</button>
+            </form>
+        </div>
+
+        <!-- Compose Modal -->
+        <div id="compose-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm modal-z flex items-center justify-center p-4">
+            <div class="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+                <div id="modal-header" class="bg-purple-600 p-5 px-6 flex justify-between items-center text-white">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="message-square-plus" id="modal-icon"></i>
+                        <h2 class="text-lg font-bold" id="modal-title">Nieuw berichtje</h2>
+                    </div>
+                    <button type="button" onclick="toggleCompose(false)" class="hover:bg-white/20 p-1.5 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                <form onsubmit="handleMessageSubmit(event)" class="p-6 overflow-y-auto custom-scrollbar">
+                    <input type="hidden" id="post-type" value="chat">
+                    
+                    <div class="mb-5">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Wie ben je?</label>
+                        <input id="author-input" type="text" placeholder="Typ je naam..." required maxLength="30" class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-purple-500 outline-none transition-all">
+                    </div>
+
+                    <!-- MOP VELDEN -->
+                    <div id="joke-fields" class="hidden space-y-4 mb-5">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">De Mop</label>
+                            <input id="joke-input" type="text" placeholder="Typ hier de mop..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-yellow-500 outline-none transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Het Antwoord</label>
+                            <input id="clou-input" type="text" placeholder="Typ het antwoord..." class="w-full px-4 py-3 rounded-xl border-2 border-slate-100 focus:border-yellow-500 outline-none transition-all">
+                        </div>
+                    </div>
+
+                    <div id="mood-selector" class="hidden mb-5">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Hoe was je dag?</label>
+                        <div class="flex justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                            <button type="button" onclick="setMood('🤩')" class="mood-btn text-2xl hover:scale-125 transition-transform" data-mood="🤩">🤩</button>
+                            <button type="button" onclick="setMood('😊')" class="mood-btn text-2xl hover:scale-125 transition-transform" data-mood="😊">😊</button>
+                            <button type="button" onclick="setMood('😴')" class="mood-btn text-2xl hover:scale-125 transition-transform" data-mood="😴">😴</button>
+                            <button type="button" onclick="setMood('🤯')" class="mood-btn text-2xl hover:scale-125 transition-transform" data-mood="🤯">🤯</button>
+                            <button type="button" onclick="setMood('🤔')" class="mood-btn text-2xl hover:scale-125 transition-transform" data-mood="🤔">🤔</button>
+                        </div>
+                        <input type="hidden" id="mood-input" value="😊">
+                    </div>
+
+                    <div id="chat-extras" class="mb-5">
+                        <label class="block text-sm font-bold text-slate-700 mb-2">Thema:</label>
+                        <div id="theme-options" class="flex flex-wrap gap-2"></div>
+                    </div>
+
+                    <div id="report-prompts" class="hidden mb-3">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Hulp nodig?</p>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="insertPrompt('Wat heb ik vandaag geleerd? ')" class="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100">Geleerd?</button>
+                            <button type="button" onclick="insertPrompt('Het leukste moment was: ')" class="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100">Leukste?</button>
+                            <button type="button" onclick="insertPrompt('Ik ben trots op: ')" class="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100">Trots!</button>
+                            <button type="button" onclick="insertPrompt('Dit was grappig: ')" class="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full font-bold hover:bg-indigo-100">Grappig!</button>
+                        </div>
+                    </div>
+
+                    <div id="text-field" class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-sm font-bold text-slate-700" id="message-label">Bericht</label>
+                            <button type="button" onclick="toggleEmojiPicker()" class="text-[11px] font-bold bg-slate-100 hover:bg-purple-100 text-slate-600 px-3 py-1.5 rounded-full flex items-center gap-1 transition-colors">
+                                <i data-lucide="smile" class="w-3.5 h-3.5"></i> Emoji's
+                            </button>
+                        </div>
+                        <div id="emoji-picker" class="hidden bg-slate-50 p-3 rounded-xl mb-3 flex flex-wrap gap-2 border border-slate-100"></div>
+                        <textarea id="text-input" placeholder="Vertel het maar..." class="w-full px-4 py-4 rounded-xl border-2 border-slate-100 focus:border-purple-500 outline-none h-32 resize-none transition-all"></textarea>
+                    </div>
+
+                    <button type="submit" id="submit-btn" class="w-full py-4 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 group">
+                        <i data-lucide="send" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i> <span id="submit-btn-text">Plaatsen</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Read Report Modal -->
+        <div id="read-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm modal-z flex items-center justify-center p-4">
+            <div id="read-content" class="bg-white rounded-[40px] shadow-2xl w-full max-w-lg animate-popup overflow-hidden cursor-pointer" onclick="handleReadClick()">
+                <div class="p-8">
+                    <div class="flex justify-between items-start mb-6">
+                        <div id="read-mood-container" class="text-4xl bg-indigo-50 w-16 h-16 rounded-3xl flex items-center justify-center border border-indigo-100">🤩</div>
+                        <button onclick="event.stopPropagation(); closeReadModal()" class="bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><i data-lucide="x" class="text-slate-500"></i></button>
+                    </div>
+                    <div class="mb-6">
+                        <h3 id="read-author" class="text-2xl font-black text-slate-800 mb-1 leading-tight">Naam</h3>
+                        <p id="read-date" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Datum</p>
+                    </div>
+                    <div class="bg-slate-50 p-7 rounded-[32px] border-2 border-slate-100 relative">
+                        <i data-lucide="quote" class="absolute -top-3 -left-1 text-indigo-200 w-8 h-8 opacity-50"></i>
+                        <p id="read-text" class="text-slate-700 leading-relaxed whitespace-pre-wrap italic text-lg">Inhoud...</p>
+                        
+                        <!-- Mop items (verborgen tenzij Mop) -->
+                        <div id="read-clou" class="hidden mt-6 pt-6 border-t-2 border-dashed border-yellow-300 text-yellow-700 font-black text-xl text-center clou-reveal"></div>
+                        <p id="tap-hint" class="hidden text-[10px] text-center mt-4 text-slate-400 animate-pulse font-black uppercase tracking-widest">Tik voor het antwoord!</p>
+                    </div>
+                    <div class="mt-8 flex justify-center">
+                        <button onclick="event.stopPropagation(); closeReadModal()" class="bg-slate-800 text-white font-bold py-3 px-8 rounded-2xl shadow-lg hover:bg-slate-900 transition-all active:scale-95">Sluiten</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NIEUW: Verwijder Bevestiging Modal (Google Sites Proof) -->
+        <div id="delete-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm modal-z flex items-center justify-center p-4">
+            <div class="bg-white rounded-[35px] shadow-2xl p-8 text-center max-w-xs w-full animate-popup">
+                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="trash-2" class="w-8 h-8"></i>
+                </div>
+                <h2 class="font-black text-xl mb-2 text-slate-800">Zeker weten?</h2>
+                <p class="text-slate-500 text-sm mb-6 font-medium">Wil je dit bericht voorgoed wissen?</p>
+                <p id="delete-error" class="hidden text-red-500 text-xs font-bold mb-4">Er ging iets mis!</p>
+                <div class="flex gap-3">
+                    <button onclick="closeDeleteModal()" class="flex-1 bg-slate-100 text-slate-600 p-3 rounded-xl font-bold hover:bg-slate-200 transition-colors">Nee</button>
+                    <button id="confirm-delete-btn" onclick="executeDelete()" class="flex-1 bg-red-500 text-white p-3 rounded-xl font-bold shadow-lg hover:bg-red-600 transition-colors">Ja, wis het!</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Beheer Modal -->
+        <div id="teacher-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm modal-z flex items-center justify-center p-4">
+            <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col animate-popup">
+                <div class="bg-slate-800 p-5 flex justify-between items-center text-white">
+                    <h2 class="text-lg font-bold flex items-center gap-2"><i data-lucide="user-cog"></i> Beheer</h2>
+                    <button type="button" onclick="closeTeacherModal()" class="hover:bg-white/20 p-1.5 rounded-full"><i data-lucide="x"></i></button>
+                </div>
+                <form onsubmit="handleTeacherLogin(event)" class="p-6 text-center">
+                    <input id="pin-input" type="password" placeholder="****" maxlength="4" class="w-full px-4 py-4 rounded-xl border-2 border-slate-200 focus:border-slate-800 outline-none text-center tracking-[1em] font-bold text-2xl mb-2">
+                    <p id="pin-error" class="hidden text-red-500 text-xs font-bold mb-4">Onjuiste pincode!</p>
+                    <button type="submit" class="w-full mt-4 py-4 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold shadow-md transition-all active:scale-95">Inloggen</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Jouw eigen Firebase Database Config
+        const firebaseConfig = {
+          apiKey: "AIzaSyC3i176J8L_xdlxgV1dxmfIDUuu_6cjJk0",
+          authDomain: "klasseklets.firebaseapp.com",
+          projectId: "klasseklets",
+          storageBucket: "klasseklets.firebasestorage.app",
+          messagingSenderId: "450289310307",
+          appId: "1:450289310307:web:e3711f47879f3444f53656"
+        };
+
+        const FORBIDDEN_WORDS = [
+            'kut', 'kk', 'kanker', 'tyfus', 'gvd', 'homo', 'hoer', 'lul', 'pik', 'neuken',
+            'sex', 'porno', 'tieten', 'slet', 'klootzak', 'tering', 'verdomme', 'fuck'
+        ];
+
+        let db;
+
+        try { 
+            firebase.initializeApp(firebaseConfig); 
+            db = firebase.firestore(); 
+        } catch (e) { 
+            console.error("Firebase error:", e); 
+        }
+
+        const EMOJI_OPTIONS = [
+            { icon: 'smile', label: 'Grappig', color: 'bg-yellow-50 border-yellow-200', textClass: 'text-yellow-600' },
+            { icon: 'star', label: 'Belangrijk', color: 'bg-purple-50 border-purple-200', textClass: 'text-purple-600' },
+            { icon: 'zap', label: 'Spannend', color: 'bg-blue-50 border-blue-200', textClass: 'text-blue-600' },
+            { icon: 'heart', label: 'Lief', color: 'bg-pink-50 border-pink-200', textClass: 'text-pink-600' },
+            { icon: 'sparkles', label: 'Nieuws', color: 'bg-teal-50 border-teal-200', textClass: 'text-teal-600' },
+        ];
+        const TEXT_EMOJIS = ['😀', '😂', '🥰', '😎', '🥳', '😜', '👍', '❤️', '✨', '🔥', '🎉', '⚽', '🎨', '🚀', '🐶', '🍕'];
+
+        let isTeacher = false;
+        let selectedTheme = EMOJI_OPTIONS[0];
+        let currentMessages = [];
+        let currentReports = [];
+        let activeView = 'chat';
+        let activeReadItem = null;
+        let itemToDelete = null; // Voor de wisfunctie
+
+        window.addEventListener('load', () => {
+            lucide.createIcons();
+            renderThemes();
+            renderEmojiPicker();
+            
+            if (db) {
+                setupDatabaseListeners();
+            }
+        });
+
+        function setupDatabaseListeners() {
+            db.collection("berichten").onSnapshot((snapshot) => {
+                let fetched = [];
+                snapshot.forEach((doc) => { fetched.push({ id: doc.id, ...doc.data() }); });
+                fetched.sort((a, b) => (b.timestamp?.toMillis() || Date.now()) - (a.timestamp?.toMillis() || Date.now()));
+                currentMessages = fetched;
+                if(activeView === 'chat') updateUI();
+                document.getElementById('loading-state').classList.add('hidden');
+            }, (error) => console.error("Error berichten:", error));
+
+            db.collection("verslagen").onSnapshot((snapshot) => {
+                let fetched = [];
+                snapshot.forEach((doc) => { fetched.push({ id: doc.id, ...doc.data() }); });
+                fetched.sort((a, b) => (b.timestamp?.toMillis() || Date.now()) - (a.timestamp?.toMillis() || Date.now()));
+                currentReports = fetched;
+                if(activeView === 'reports') updateUI();
+            }, (error) => console.error("Error verslagen:", error));
+        }
+
+        function switchView(view) {
+            activeView = view;
+            const isChat = view === 'chat';
+            document.getElementById('chat-view').classList.toggle('hidden', !isChat);
+            document.getElementById('reports-view').classList.toggle('hidden', isChat);
+            
+            const btnChat = document.getElementById('nav-chat');
+            const btnReports = document.getElementById('nav-reports');
+            
+            btnChat.className = isChat ? 'flex-1 py-2.5 px-4 rounded-xl font-bold text-sm transition-all bg-white text-purple-600 shadow-sm' : 'flex-1 py-2.5 px-4 rounded-xl font-bold text-sm transition-all hover:bg-white/10 text-white';
+            btnReports.className = !isChat ? 'flex-1 py-2.5 px-4 rounded-xl font-bold text-sm transition-all bg-white text-indigo-600 shadow-sm' : 'flex-1 py-2.5 px-4 rounded-xl font-bold text-sm transition-all hover:bg-white/10 text-white';
+            
+            updateUI();
+        }
+
+        function updateUI() {
+            if(activeView === 'chat') {
+                renderMessages(currentMessages);
+                document.getElementById('empty-state').classList.toggle('hidden', currentMessages.length > 0);
+            } else {
+                renderReports(currentReports);
+                document.getElementById('reports-empty-state').classList.toggle('hidden', currentReports.length > 0);
+            }
+        }
+
+        function renderThemes() {
+            document.getElementById('theme-options').innerHTML = EMOJI_OPTIONS.map(opt => `
+                <button type="button" onclick="setTheme('${opt.label}')" 
+                    class="p-2.5 px-4 rounded-xl border-2 flex items-center gap-2 text-xs font-bold transition-all shadow-sm ${selectedTheme.label === opt.label ? opt.color + ' border-current' : 'bg-white border-slate-50 opacity-60'}">
+                    <i data-lucide="${opt.icon}" class="${opt.textClass} w-4 h-4"></i> ${opt.label}
+                </button>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderEmojiPicker() {
+            document.getElementById('emoji-picker').innerHTML = TEXT_EMOJIS.map(e => `
+                <button type="button" onclick="addEmoji('${e}')" class="text-2xl hover:scale-125 transition-transform p-1.5 focus:outline-none">${e}</button>
+            `).join('');
+        }
+
+        function renderMessages(docs) {
+            document.getElementById('messages-container').innerHTML = docs.map(msg => {
+                const emojiObj = EMOJI_OPTIONS.find(e => e.label === msg.emojiLabel) || EMOJI_OPTIONS[0];
+                const dateStr = msg.timestamp ? new Date(msg.timestamp.toMillis()).toLocaleTimeString('nl-NL', {hour:'2-digit', minute:'2-digit'}) : 'Zojuist';
+                return `
+                    <div class="message-card bg-white rounded-3xl p-6 shadow-sm border-2 ${msg.colorClass} relative overflow-hidden group">
+                        <div class="flex items-start gap-4 relative z-10">
+                            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-50">
+                                <i data-lucide="${emojiObj.icon}" class="${emojiObj.textClass} w-7 h-7"></i>
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-baseline mb-2">
+                                    <h3 class="font-bold text-slate-800">${msg.author}</h3>
+                                    <div class="flex items-center gap-3">
+                                        <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${dateStr}</span>
+                                        ${isTeacher ? `<button type="button" onclick="openDeleteModal('berichten', '${msg.id}')" class="text-red-500 hover:bg-red-100 bg-red-50 px-3 py-1 rounded-full font-bold text-[10px] uppercase transition-colors cursor-pointer relative z-20">Wis</button>` : ''}
+                                    </div>
+                                </div>
+                                <p class="text-slate-600 text-[15px] whitespace-pre-wrap leading-relaxed">${msg.text}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function renderReports(docs) {
+            document.getElementById('reports-grid').innerHTML = docs.map(report => {
+                const dateShort = report.timestamp ? new Date(report.timestamp.toMillis()).toLocaleDateString('nl-NL', {day:'numeric', month:'short'}) : 'Vandaag';
+                
+                let cardTitle = 'Dagverslag';
+                let titleColor = 'text-indigo-500';
+
+                if (report.type === 'mop') {
+                    cardTitle = 'Leuke Mop';
+                    titleColor = 'text-yellow-500';
+                    return `
+                    <div class="flex flex-col items-center gap-2 relative">
+                        <span class="text-[10px] font-black ${titleColor} uppercase tracking-widest text-center w-full truncate">${cardTitle}</span>
+                        <div onclick="openReport('${report.id}')" class="joke-card">
+                            <span class="text-4xl">😂</span>
+                            <div class="absolute -top-2 -right-2 bg-yellow-400 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-sm">MOP</div>
+                        </div>
+                        <div class="text-center mt-1 flex flex-col items-center gap-2">
+                            <p class="font-black text-slate-700 text-sm truncate w-28 uppercase tracking-tighter">${report.author}</p>
+                            ${isTeacher ? `<button type="button" onclick="openDeleteModal('verslagen', '${report.id}')" class="text-red-500 hover:bg-red-100 bg-red-50 px-3 py-1 rounded-full font-bold text-[9px] uppercase transition-colors cursor-pointer relative z-20">Wis</button>` : ''}
+                        </div>
+                    </div>
+                    `;
+                }
+
+                let extraClasses = '';
+                let specialIcon = '';
+                if (report.type === 'milou-vraag') {
+                    cardTitle = 'Vraag voor Milou';
+                    titleColor = 'text-purple-500';
+                    extraClasses = 'envelope-milou';
+                }
+                if (report.type === 'milou-special') {
+                    cardTitle = 'Bericht van Milou';
+                    titleColor = 'text-amber-500';
+                    extraClasses = 'envelope-gold';
+                    specialIcon = '<div class="absolute -top-3 -left-3 rotate-[-20deg] text-2xl z-20">👑</div>';
+                }
+
+                return `
+                <div class="flex flex-col items-center gap-2 relative">
+                    <span class="text-[10px] font-black ${titleColor} uppercase tracking-widest text-center w-full truncate">${cardTitle}</span>
+                    <div onclick="openReport('${report.id}')" class="envelope ${extraClasses} flex flex-col items-center justify-center pb-2">
+                        ${specialIcon}
+                        <span class="text-xs font-black text-indigo-200 z-10 opacity-60 mb-2 uppercase tracking-tighter">${dateShort}</span>
+                        <div class="bg-indigo-500 w-7 h-7 rounded-full border-4 border-white shadow-md z-10 flex items-center justify-center">
+                            <span class="text-[10px] text-white font-bold">${report.mood || '😊'}</span>
+                        </div>
+                    </div>
+                    <div class="text-center mt-1 flex flex-col items-center gap-2">
+                        <p class="font-black text-slate-700 text-sm truncate w-28 uppercase tracking-tighter">${report.author}</p>
+                        ${isTeacher ? `<button type="button" onclick="openDeleteModal('verslagen', '${report.id}')" class="text-red-500 hover:bg-red-100 bg-red-50 px-3 py-1 rounded-full font-bold text-[9px] uppercase transition-colors cursor-pointer relative z-20">Wis</button>` : ''}
+                    </div>
+                </div>
+            `}).join('');
+            lucide.createIcons();
+        }
+
+        // Modals Management
+        function openSelectionModal() { document.getElementById('selection-modal').classList.remove('hidden'); }
+        function closeSelectionModal() { document.getElementById('selection-modal').classList.add('hidden'); }
+        
+        function openMilouAccess() { closeSelectionModal(); document.getElementById('milou-modal').classList.remove('hidden'); }
+        function closeMilouAccess() { 
+            document.getElementById('milou-modal').classList.add('hidden'); 
+            document.getElementById('milou-pin').value = ''; 
+            document.getElementById('milou-pin-error').classList.add('hidden');
+        }
+        
+        function handleMilouLogin(e) {
+            if(e) e.preventDefault();
+            if(document.getElementById('milou-pin').value === '2026') {
+                document.getElementById('milou-pin-error').classList.add('hidden');
+                closeMilouAccess();
+                toggleCompose(true, 'milou-special');
+            } else {
+                document.getElementById('milou-pin-error').classList.remove('hidden');
+                setTimeout(() => document.getElementById('milou-pin-error').classList.add('hidden'), 2000);
+            }
+        }
+
+        function toggleCompose(show, type = 'chat') { 
+            closeSelectionModal();
+            const modal = document.getElementById('compose-modal');
+            if (show) {
+                const isReport = type === 'report';
+                const isMop = type === 'mop';
+                const isMilouVraag = type === 'milou-vraag';
+                const isMilouSpecial = type === 'milou-special';
+                const isChat = type === 'chat';
+
+                document.getElementById('post-type').value = type;
+                
+                // Show/hide appropriate fields
+                document.getElementById('joke-fields').classList.toggle('hidden', !isMop);
+                document.getElementById('text-field').classList.toggle('hidden', isMop);
+                document.getElementById('chat-extras').classList.toggle('hidden', !isChat);
+                document.getElementById('mood-selector').classList.toggle('hidden', !isReport);
+                document.getElementById('report-prompts').classList.toggle('hidden', !isReport);
+                
+                const header = document.getElementById('modal-header');
+                const btn = document.getElementById('submit-btn');
+                const textInput = document.getElementById('text-input');
+                const jokeInput = document.getElementById('joke-input');
+                const clouInput = document.getElementById('clou-input');
+
+                // Toggle required tags
+                if (isMop) {
+                    textInput.removeAttribute('required');
+                    jokeInput.setAttribute('required', 'true');
+                    clouInput.setAttribute('required', 'true');
+                } else {
+                    textInput.setAttribute('required', 'true');
+                    jokeInput.removeAttribute('required');
+                    clouInput.removeAttribute('required');
+                }
+
+                // Styling headers and buttons
+                if (isReport) {
+                    document.getElementById('modal-title').innerText = 'Dagverslag schrijven';
+                    header.className = 'bg-indigo-600 p-5 px-6 flex justify-between items-center text-white';
+                    btn.className = 'w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 group';
+                    document.getElementById('message-label').innerText = 'Jouw verhaal';
+                    textInput.placeholder = 'Vandaag was een...';
+                } else if (isMop) {
+                    document.getElementById('modal-title').innerText = 'Mop vertellen';
+                    header.className = 'bg-yellow-500 p-5 px-6 flex justify-between items-center text-white';
+                    btn.className = 'w-full py-4 rounded-2xl bg-yellow-500 hover:bg-yellow-600 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 group';
+                } else if (isMilouVraag) {
+                    document.getElementById('modal-title').innerText = 'Vraag voor Milou';
+                    header.className = 'bg-purple-500 p-5 px-6 flex justify-between items-center text-white';
+                    btn.className = 'w-full py-4 rounded-2xl bg-purple-500 hover:bg-purple-600 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 group';
+                    document.getElementById('message-label').innerText = 'Jouw vraag';
+                    textInput.placeholder = 'Wat wil je vragen aan Milou?';
+                } else if (isMilouSpecial) {
+                    document.getElementById('modal-title').innerText = 'Alleen voor Milou';
+                    header.className = 'bg-amber-500 p-5 px-6 flex justify-between items-center text-white';
+                    btn.className = 'w-full py-4 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 group';
+                    document.getElementById('message-label').innerText = 'Jouw bericht';
+                    textInput.placeholder = 'Vertel je klas hoe het gaat...';
+                } else if (isChat) {
+                    document.getElementById('modal-title').innerText = 'Nieuw berichtje';
+                    header.className = 'bg-purple-600 p-5 px-6 flex justify-between items-center text-white';
+                    btn.className = 'w-full py-4 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold shadow-lg flex items-center justify-center gap-2 transition-all active:scale-95 group';
+                    document.getElementById('message-label').innerText = 'Bericht';
+                    textInput.placeholder = 'Wat wil je vertellen?';
+                }
+                
+                setMood('😊');
+                lucide.createIcons();
+            }
+            modal.classList.toggle('hidden', !show); 
+        }
+
+        function setMood(mood) {
+            document.getElementById('mood-input').value = mood;
+            document.querySelectorAll('.mood-btn').forEach(btn => {
+                btn.classList.toggle('scale-150', btn.getAttribute('data-mood') === mood);
+                btn.classList.toggle('grayscale', btn.getAttribute('data-mood') !== mood);
+            });
+        }
+
+        function insertPrompt(text) {
+            const textarea = document.getElementById('text-input');
+            textarea.value = text + textarea.value;
+            textarea.focus();
+        }
+
+        function setTheme(label) { selectedTheme = EMOJI_OPTIONS.find(e => e.label === label); renderThemes(); }
+        function toggleEmojiPicker() { document.getElementById('emoji-picker').classList.toggle('hidden'); }
+        function addEmoji(emoji) { document.getElementById('text-input').value += emoji; document.getElementById('text-input').focus(); }
+
+        // Veiligheids filter
+        function containsBadWords(text) {
+            if (!text) return false;
+            const cleanText = text.toLowerCase().replace(/[^\w\s]/gi, '').replace(/\s+/g, '');
+            return FORBIDDEN_WORDS.some(word => cleanText.includes(word));
+        }
+
+        let warningTimeout;
+        function showBigWarning() {
+            const overlay = document.getElementById('big-warning-overlay');
+            const progress = document.getElementById('warning-progress');
+            clearTimeout(warningTimeout);
+            overlay.classList.remove('hidden');
+            progress.style.transition = 'none';
+            progress.style.width = '100%';
+            setTimeout(() => {
+                progress.style.transition = 'width 3000ms linear';
+                progress.style.width = '0%';
+            }, 50);
+            warningTimeout = setTimeout(() => { overlay.classList.add('hidden'); }, 3000);
+        }
+
+        // Verzenden Data (Aangepast zodat het Google Sites proof is zonder alerts!)
+        function handleMessageSubmit(e) {
+            e.preventDefault();
+
+            const type = document.getElementById('post-type').value;
+            const author = document.getElementById('author-input').value.trim();
+            const text = document.getElementById('text-input').value.trim();
+            const joke = document.getElementById('joke-input').value.trim();
+            const clou = document.getElementById('clou-input').value.trim();
+            
+            if (containsBadWords(author) || containsBadWords(text) || containsBadWords(joke) || containsBadWords(clou)) {
+                showBigWarning();
+                return;
+            }
+            
+            const btn = document.getElementById('submit-btn');
+            const originalContent = btn.innerHTML;
+            btn.innerHTML = "Momentje...";
+            btn.disabled = true;
+            
+            const collection = type === 'chat' ? 'berichten' : 'verslagen';
+            const data = {
+                type: type,
+                author,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if(type === 'chat') {
+                data.text = text;
+                data.emojiLabel = selectedTheme.label;
+                data.colorClass = selectedTheme.color;
+            } else if (type === 'mop') {
+                data.joke = joke;
+                data.clou = clou;
+            } else if (type === 'milou-vraag') {
+                data.text = text;
+                data.mood = '💜';
+            } else if (type === 'milou-special') {
+                data.text = text;
+                data.mood = '👑';
+            } else {
+                data.text = text;
+                data.mood = document.getElementById('mood-input').value;
+            }
+
+            db.collection(collection).add(data)
+            .then(() => {
+                toggleCompose(false);
+                document.getElementById('author-input').value = '';
+                document.getElementById('text-input').value = '';
+                document.getElementById('joke-input').value = '';
+                document.getElementById('clou-input').value = '';
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                btn.disabled = false;
+                btn.innerHTML = originalContent;
+            })
+            .catch((error) => {
+                console.error(error);
+                // Geen alert gebruiken, we veranderen gewoon de knop tekst!
+                btn.innerHTML = "Oeps! Foutje. Probeer opnieuw.";
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                }, 3000);
+            });
+        }
+
+        // Lees Pop-ups
+        function openReport(id) {
+            const r = currentReports.find(x => x.id === id);
+            if(!r) return;
+            activeReadItem = r;
+
+            document.getElementById('read-author').innerText = r.author;
+            document.getElementById('read-date').innerText = r.timestamp ? new Date(r.timestamp.toMillis()).toLocaleDateString('nl-NL') : 'Vandaag';
+            
+            const clouEl = document.getElementById('read-clou');
+            const hintEl = document.getElementById('tap-hint');
+            clouEl.classList.add('hidden');
+            hintEl.classList.add('hidden');
+
+            if (r.type === 'mop') {
+                document.getElementById('read-mood-container').innerText = '😂';
+                document.getElementById('read-text').innerText = r.joke;
+                clouEl.innerText = r.clou;
+                hintEl.classList.remove('hidden');
+            } else if (r.type === 'milou-special') {
+                document.getElementById('read-mood-container').innerText = '👑';
+                document.getElementById('read-text').innerText = r.text;
+                confetti({ particleCount: 150, spread: 70, colors: ['#fbbf24', '#ffffff'], origin: {y: 0.6} });
+            } else if (r.type === 'milou-vraag') {
+                document.getElementById('read-mood-container').innerText = '💜';
+                document.getElementById('read-text').innerText = r.text;
+            } else {
+                document.getElementById('read-mood-container').innerText = r.mood || '😊';
+                document.getElementById('read-text').innerText = r.text;
+            }
+
+            document.getElementById('read-modal').classList.remove('hidden');
+        }
+
+        function handleReadClick() {
+            if (activeReadItem && activeReadItem.type === 'mop') {
+                const clou = document.getElementById('read-clou');
+                if (clou.classList.contains('hidden')) {
+                    clou.classList.remove('hidden');
+                    document.getElementById('tap-hint').classList.add('hidden');
+                    confetti({ particleCount: 50, colors: ['#facc15', '#ffffff'] });
+                }
+            }
+        }
+
+        function closeReadModal() { document.getElementById('read-modal').classList.add('hidden'); activeReadItem = null; }
+        
+        // --- LERAAR & VERWIJDEREN LOGICA ---
+        function handleLockClick() { 
+            if (isTeacher) {
+                // We zijn ingelogd, dus bij klik loggen we veilig uit!
+                isTeacher = false;
+                document.getElementById('lock-btn').classList.remove('text-green-400');
+                document.getElementById('lock-btn').classList.add('text-white/30');
+                document.getElementById('lock-icon').setAttribute('data-lucide', 'lock');
+                lucide.createIcons();
+                updateUI(); // Dit haalt de wis-knopjes weer netjes weg!
+            } else {
+                // Niet ingelogd, toon het pin-scherm
+                document.getElementById('teacher-modal').classList.remove('hidden'); 
+                document.getElementById('pin-input').value = '';
+                document.getElementById('pin-error').classList.add('hidden');
+            }
+        }
+        
+        function closeTeacherModal() { 
+            document.getElementById('teacher-modal').classList.add('hidden'); 
+        }
+
+        function handleTeacherLogin(e) {
+            e.preventDefault();
+            if(document.getElementById('pin-input').value === '4286') {
+                isTeacher = true;
+                closeTeacherModal();
+                updateUI(); // Zet de prullenbakjes zichtbaar!
+                document.getElementById('lock-btn').classList.remove('text-white/30');
+                document.getElementById('lock-btn').classList.add('text-green-400');
+                document.getElementById('lock-icon').setAttribute('data-lucide', 'unlock');
+                lucide.createIcons();
+            } else {
+                document.getElementById('pin-error').classList.remove('hidden');
+            }
+        }
+
+        // Google-sites proof verwijderen zonder browser block!
+        function openDeleteModal(coll, id) {
+            itemToDelete = { coll, id };
+            document.getElementById('delete-error').classList.add('hidden');
+            document.getElementById('delete-modal').classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            itemToDelete = null;
+        }
+
+        function executeDelete() {
+            if(!itemToDelete) return;
+            const { coll, id } = itemToDelete;
+            const btn = document.getElementById('confirm-delete-btn');
+            
+            btn.disabled = true;
+            btn.innerHTML = "Wissen...";
+
+            db.collection(coll).doc(id).delete()
+            .then(() => {
+                closeDeleteModal();
+                btn.disabled = false;
+                btn.innerHTML = "Ja, wis het!";
+            })
+            .catch((error) => {
+                console.error("Fout bij verwijderen:", error);
+                document.getElementById('delete-error').classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = "Ja, wis het!";
+            });
+        }
+    </script>
+</body>
+</html>
