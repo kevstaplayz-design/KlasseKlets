@@ -1,0 +1,110 @@
+
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            scroll-behavior: smooth; 
+            background-color: #f8fafc;
+        }
+
+        #app-container {
+            border: 1px solid #000000;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            margin: 0 auto;
+            max-width: 100%;
+            background-color: #f8fafc;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        .modal-z { z-index: 9999; }
+        [data-lucide] { width: 20px; height: 20px; display: inline-block; }
+        
+        .message-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .message-card:hover { transform: translateY(-4px) scale(1.01); }
+        
+        @keyframes float { 
+            0% { transform: translateY(0px); } 
+            50% { transform: translateY(-5px); } 
+            100% { transform: translateY(0px); } 
+        }
+        .float-animation { animation: float 3s ease-in-out infinite; }
+
+        /* Standaard Envelop */
+        .envelope {
+            position: relative;
+            width: 130px;
+            height: 90px;
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .envelope:hover {
+            transform: translateY(-8px) rotate(3deg);
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .envelope::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 0;
+            border-left: 65px solid transparent;
+            border-right: 65px solid transparent;
+            border-top: 45px solid #e2e8f0;
+            z-index: 2;
+        }
+
+        /* Speciale Enveloppen & Kaarten */
+        .envelope-milou { border-color: #d8b4fe; background: #faf5ff; }
+        .envelope-milou::before { border-top-color: #f3e8ff; }
+
+        .envelope-gold { 
+            border-color: #fbbf24; 
+            background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%); 
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);
+        }
+        .envelope-gold::before { border-top-color: #fde68a; }
+
+        .joke-card {
+            position: relative;
+            width: 130px;
+            height: 90px;
+            background: #fef9c3;
+            border: 2px dashed #facc15;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .joke-card:hover { 
+            transform: translateY(-5px) rotate(-2deg); 
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); 
+        }
+
+        /* Grote Pop-up Animatie */
+        @keyframes popupIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-popup { animation: popupIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        .clou-reveal { animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
